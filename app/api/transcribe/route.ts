@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const openaiKey = req.headers.get("x-openai-key");
-    if (!openaiKey) return NextResponse.json({ error: "No OpenAI key" }, { status: 401 });
+    const openaiKey = process.env.OPENAI_KEY;
+    if (!openaiKey) return NextResponse.json({ error: "OpenAI key not configured" }, { status: 401 });
 
     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",

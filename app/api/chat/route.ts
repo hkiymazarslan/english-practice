@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const geminiKey = req.headers.get("x-gemini-key");
-    if (!geminiKey) return NextResponse.json({ error: "No API key" }, { status: 401 });
+    const geminiKey = process.env.GEMINI_KEY;
+    if (!geminiKey) return NextResponse.json({ error: "Gemini key not configured" }, { status: 401 });
 
     const { messages, system } = body;
 

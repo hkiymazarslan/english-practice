@@ -35,12 +35,9 @@ const getBritishVoice = () => {
 };
 
 export default function Home() {
-  const [screen, setScreen] = useState<"setup"|"home"|"chat"|"summary">(() => {
-    if (typeof window !== "undefined" && localStorage.getItem("gemini_key")) return "home";
-    return "setup";
-  });
-  const [anthropicKey, setAnthropicKey] = useState(() => typeof window !== "undefined" ? localStorage.getItem("gemini_key") || "" : "");
-  const [openaiKey, setOpenaiKey] = useState(() => typeof window !== "undefined" ? localStorage.getItem("openai_key") || "" : "");
+  const [screen, setScreen] = useState<"home"|"chat"|"summary">("home");
+  const [anthropicKey] = useState("");
+  const [openaiKey] = useState("");
   const [scenario, setScenario] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,7 +80,7 @@ export default function Home() {
     if (system) body.system = system;
     const res = await fetch("/api/chat", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-gemini-key": anthropicKey },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -136,7 +133,6 @@ export default function Home() {
       fd.append("language", "en");
       const res = await fetch("/api/transcribe", {
         method: "POST",
-        headers: { "x-openai-key": openaiKey },
         body: fd,
       });
       const data = await res.json();
@@ -195,33 +191,6 @@ export default function Home() {
     input:focus{outline:none} ::-webkit-scrollbar{width:3px} ::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
   `;
 
-  if (screen === "setup") return (
-    <><style>{C}</style>
-    <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#0d1b2e,#1a2f4a)",display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px 80px"}}>
-      <div style={{width:"100%",maxWidth:460}}>
-        <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{fontSize:48,marginBottom:12}}>🇬🇧</div>
-          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:"#fff",marginBottom:8}}>British English Practice</h1>
-          <p style={{color:"#8aaccc",fontSize:14}}>API anahtarlarını gir, başla!</p>
-        </div>
-        {[
-          {label:"🔑 Gemini API Key", hint:"aistudio.google.com → Get API Key", val:anthropicKey, set:setAnthropicKey, ph:"AIza..."},
-          {label:"🎤 OpenAI Key (ses için)", hint:"platform.openai.com → API Keys · $5 ücretsiz kredi", val:openaiKey, set:setOpenaiKey, ph:"sk-..."},
-        ].map(f => (
-          <div key={f.ph} style={{background:"rgba(255,255,255,.06)",borderRadius:14,padding:16,marginBottom:12,border:"1px solid rgba(255,255,255,.1)"}}>
-            <div style={{color:"#fff",fontWeight:600,fontSize:14,marginBottom:3}}>{f.label}</div>
-            <div style={{color:"#7a90aa",fontSize:12,marginBottom:8}}>{f.hint}</div>
-            <input type="password" placeholder={f.ph} value={f.val} onChange={e=>f.set(e.target.value)}
-              style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",borderRadius:10,padding:"10px 14px",color:"#fff",fontSize:14}}/>
-          </div>
-        ))}
-        {error && <div style={{color:"#e07070",textAlign:"center",marginBottom:12,fontSize:13}}>{error}</div>}
-        <button onClick={()=>{if(!anthropicKey.trim()){setError("Gemini key gerekli!");return;}localStorage.setItem("gemini_key",anthropicKey);localStorage.setItem("openai_key",openaiKey);setError("");setScreen("home");}}
-          style={{width:"100%",background:"#2d5a8e",border:"none",borderRadius:12,padding:14,color:"#fff",fontWeight:700,fontSize:16,cursor:"pointer"}}>Başla →</button>
-      </div>
-    </div></>
-  );
-
   if (screen === "home") return (
     <><style>{C}</style>
     <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#0d1b2e,#1a2f4a)",padding:"40px 20px 80px",display:"flex",flexDirection:"column",alignItems:"center"}}>
@@ -240,9 +209,6 @@ export default function Home() {
               <div style={{color:"#7a90aa",fontSize:11}}>{sc.sublabel}</div>
             </div>
           ))}
-        </div>
-        <div style={{textAlign:"center",marginTop:24}}>
-          <button onClick={()=>setScreen("setup")} style={{background:"none",border:"none",color:"#5a7a99",cursor:"pointer",fontSize:13}}>⚙️ API Ayarları</button>
         </div>
       </div>
     </div></>
