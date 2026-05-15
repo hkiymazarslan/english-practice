@@ -35,9 +35,12 @@ const getBritishVoice = () => {
 };
 
 export default function Home() {
-  const [screen, setScreen] = useState<"setup"|"home"|"chat"|"summary">("setup");
-  const [anthropicKey, setAnthropicKey] = useState("");
-  const [openaiKey, setOpenaiKey] = useState("");
+  const [screen, setScreen] = useState<"setup"|"home"|"chat"|"summary">(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("gemini_key")) return "home";
+    return "setup";
+  });
+  const [anthropicKey, setAnthropicKey] = useState(() => typeof window !== "undefined" ? localStorage.getItem("gemini_key") || "" : "");
+  const [openaiKey, setOpenaiKey] = useState(() => typeof window !== "undefined" ? localStorage.getItem("openai_key") || "" : "");
   const [scenario, setScenario] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,8 +51,10 @@ export default function Home() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [error, setError] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder|null>(null);
+  const streamRef = useRef<MediaStream|null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
   useEffect(() => {
@@ -92,12 +97,12 @@ export default function Home() {
     try {
       setError("");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
       const recorder = new MediaRecorder(stream, { mimeType });
       chunksRef.current = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(chunksRef.current, { type: mimeType });
         await transcribeAndSend(blob, mimeType);
       };
@@ -109,7 +114,16 @@ export default function Home() {
     }
   };
 
-  const stopRecording = () => { mediaRecorderRef.current?.stop(); setIsRecording(false); };
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setIsRecording(false);
+  };
 
   const transcribeAndSend = async (blob: Blob, mimeType: string) => {
     if (!openaiKey) { setError("Sesli giriş için OpenAI key gerekli."); return; }
@@ -202,7 +216,7 @@ export default function Home() {
           </div>
         ))}
         {error && <div style={{color:"#e07070",textAlign:"center",marginBottom:12,fontSize:13}}>{error}</div>}
-        <button onClick={()=>{if(!anthropicKey.trim()){setError("Gemini key gerekli!");return;}setError("");setScreen("home");}}
+        <button onClick={()=>{if(!anthropicKey.trim()){setError("Gemini key gerekli!");return;}localStorage.setItem("gemini_key",anthropicKey);localStorage.setItem("openai_key",openaiKey);setError("");setScreen("home");}}
           style={{width:"100%",background:"#2d5a8e",border:"none",borderRadius:12,padding:14,color:"#fff",fontWeight:700,fontSize:16,cursor:"pointer"}}>Başla →</button>
       </div>
     </div></>
