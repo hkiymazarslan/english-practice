@@ -38,6 +38,9 @@ export default function Home() {
   const [screen, setScreen] = useState<"home"|"chat"|"summary">("home");
   const [anthropicKey] = useState("");
   const [openaiKey] = useState("");
+  const [aiModel, setAiModel] = useState<"groq"|"gemini">(() => 
+    typeof window !== "undefined" ? (localStorage.getItem("ai_model") as any) || "groq" : "groq"
+  );
   const [scenario, setScenario] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,24 +62,50 @@ export default function Home() {
     window.speechSynthesis?.getVoices();
   }, []);
 
-  const speak = (text: string) => {
-    window.speechSynthesis.cancel();
+  const audioRef = useRef<HTMLAudioElement|null>(null);
+
+  const speak = async (text: string) => {
     const clean = text.split("\n").filter(l => !l.startsWith("CORRECTION:")).join(" ").trim();
     if (!clean) return;
-    setTimeout(() => {
-      const u = new SpeechSynthesisUtterance(clean);
-      const v = getBritishVoice();
-      if (v) u.voice = v;
-      u.lang = "en-GB"; u.rate = 0.88; u.pitch = 1.05;
-      u.onstart = () => setIsSpeaking(true);
-      u.onend = () => setIsSpeaking(false);
-      u.onerror = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(u);
-    }, 200);
+    // Stop any current audio
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(true);
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: clean }),
+      });
+      if (!res.ok) {
+        // Fallback to browser TTS
+        const u = new SpeechSynthesisUtterance(clean);
+        u.lang = "en-GB"; u.rate = 0.88; u.pitch = 1.05;
+        u.onend = () => setIsSpeaking(false);
+        u.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.speak(u);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url); };
+      audio.onerror = () => { setIsSpeaking(false); URL.revokeObjectURL(url); };
+      await audio.play();
+    } catch {
+      setIsSpeaking(false);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
   };
 
   const callClaude = async (msgs: any[], system?: string) => {
-    const body: any = { model: "claude-haiku-4-5-20251001", max_tokens: 800, messages: msgs };
+    const body: any = { model: aiModel, max_tokens: 800, messages: msgs };
     if (system) body.system = system;
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -158,6 +187,12 @@ export default function Home() {
   };
 
   const startChat = async (sc: any) => {
+    // Unlock audio on this user gesture (iOS autoplay policy)
+    try {
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0; u.rate = 10;
+      window.speechSynthesis.speak(u);
+    } catch {}
     setScenario(sc); setMessages([]); setError(""); setSummary(""); setExpandedIdx(null);
     setScreen("chat"); setLoading(true);
     try {
@@ -198,6 +233,18 @@ export default function Home() {
           <div style={{fontSize:40,marginBottom:10}}>🇬🇧</div>
           <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#fff",marginBottom:6}}>Senaryo Seç</h1>
           <p style={{color:"#8aaccc",fontSize:13}}>🎤 Sesli konuş · 🔊 British accent · 👆 Balona bas → metni gör</p>
+          {/* Model selector */}
+          <div style={{display:"inline-flex",gap:6,marginTop:14,background:"rgba(0,0,0,.3)",borderRadius:20,padding:"4px"}}>
+            {(["groq","gemini"] as const).map(m=>(
+              <button key={m} onClick={()=>{setAiModel(m);localStorage.setItem("ai_model",m);}}
+                style={{background:aiModel===m?"#2d5a8e":"transparent",border:"none",borderRadius:16,padding:"5px 16px",color:aiModel===m?"#fff":"#7a90aa",fontSize:12,fontWeight:600,cursor:"pointer",transition:"all .2s"}}>
+                {m==="groq"?"⚡ Groq":"✨ Gemini"}
+              </button>
+            ))}
+          </div>
+          <div style={{color:"#5a7a99",fontSize:11,marginTop:6}}>
+            {aiModel==="groq"?"Hızlı · Llama 3.3 70B":"Kaliteli · Gemini 2.5 Flash"}
+          </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           {SCENARIOS.map((sc,i)=>(
@@ -217,7 +264,7 @@ export default function Home() {
     <><style>{C}</style>
     <div style={{height:"100dvh",display:"flex",flexDirection:"column",background:"#f2f4f8"}}>
       <div style={{background:"linear-gradient(135deg,#0d1b2e,#1a2f4a)",padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-        <button onClick={()=>{window.speechSynthesis.cancel();setScreen("home");}} style={{background:"none",border:"none",color:"#7eb8c9",cursor:"pointer",fontSize:20}}>←</button>
+        <button onClick={()=>{stopSpeaking();setScreen("home");}} style={{background:"none",border:"none",color:"#7eb8c9",cursor:"pointer",fontSize:20}}>←</button>
         <div style={{textAlign:"center"}}>
           <div style={{fontSize:16}}>{scenario?.emoji}</div>
           <div style={{color:"#fff",fontSize:13,fontWeight:600}}>{scenario?.label}</div>
@@ -290,7 +337,7 @@ export default function Home() {
           {isRecording?"🎙 Basılı tut, bırakınca gönderir":isSpeaking?"🔊 Konuşuyor...":"Bas ve konuş, bırak gönder"}
         </div>
         {isSpeaking&&(
-          <button onClick={()=>{window.speechSynthesis.cancel();setIsSpeaking(false);}}
+          <button onClick={stopSpeaking}
             style={{background:"rgba(220,60,60,.08)",border:"1px solid rgba(220,60,60,.25)",borderRadius:20,padding:"5px 14px",color:"#e07070",fontSize:12,cursor:"pointer"}}>
             ⏹ Durdur
           </button>
