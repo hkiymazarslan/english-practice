@@ -123,7 +123,6 @@ export default function Home() {
   };
 
   const transcribeAndSend = async (blob: Blob, mimeType: string) => {
-    if (!openaiKey) { setError("Sesli giriş için OpenAI key gerekli."); return; }
     setLoading(true);
     try {
       const ext = mimeType.includes("webm") ? "webm" : "mp4";
