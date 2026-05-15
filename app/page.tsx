@@ -179,7 +179,9 @@ export default function Home() {
     setMessages(next);
     setLoading(true);
     try {
-      const reply = await callClaude(next, buildSystem(scenario.role));
+      // Only send last 6 messages to stay within rate limits
+      const trimmed = next.slice(-6);
+      const reply = await callClaude(trimmed, buildSystem(scenario.role));
       setMessages(p => [...p, { role: "assistant", content: reply }]);
       speak(reply);
     } catch (e: any) { setError(e.message); }
