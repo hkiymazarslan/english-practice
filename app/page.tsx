@@ -128,7 +128,7 @@ export default function Home() {
       const ext = mimeType.includes("webm") ? "webm" : "mp4";
       const fd = new FormData();
       fd.append("file", blob, `rec.${ext}`);
-      fd.append("model", "whisper-1");
+      fd.append("model", "whisper-large-v3-turbo");
       fd.append("language", "en");
       const res = await fetch("/api/transcribe", {
         method: "POST",

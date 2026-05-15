@@ -3,12 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const openaiKey = process.env.OPENAI_KEY;
-    if (!openaiKey) return NextResponse.json({ error: "OpenAI key not configured" }, { status: 401 });
+    const groqKey = process.env.GROQ_KEY;
+    if (!groqKey) return NextResponse.json({ error: "Groq key not configured" }, { status: 401 });
 
-    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${openaiKey}` },
+      headers: { Authorization: `Bearer ${groqKey}` },
       body: formData,
     });
 
