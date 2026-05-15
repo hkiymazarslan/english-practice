@@ -297,20 +297,39 @@ export default function Home() {
         <div ref={bottomRef}/>
       </div>
 
-      <div style={{background:"#fff",borderTop:"1px solid #e0e4ea",padding:"12px 14px 24px",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+      <div style={{background:"#fff",borderTop:"1px solid #e0e4ea",padding:"12px 14px 28px",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
         <div style={{position:"relative"}}>
-          {isRecording&&<div style={{position:"absolute",inset:-8,borderRadius:"50%",background:"rgba(220,60,60,.2)",animation:"rip 1s ease infinite"}}/>}
-          <button onClick={isRecording?stopRecording:startRecording} disabled={loading||isSpeaking}
-            style={{width:64,height:64,borderRadius:"50%",border:"none",cursor:loading||isSpeaking?"not-allowed":"pointer",fontSize:26,
+          {isRecording&&<div style={{position:"absolute",inset:-10,borderRadius:"50%",background:"rgba(220,60,60,.2)",animation:"rip 1s ease infinite"}}/>}
+          {isRecording&&<div style={{position:"absolute",inset:-20,borderRadius:"50%",background:"rgba(220,60,60,.1)",animation:"rip 1.2s ease .3s infinite"}}/>}
+          <button
+            onPointerDown={e=>{e.preventDefault();if(!loading&&!isSpeaking)startRecording();}}
+            onPointerUp={e=>{e.preventDefault();if(isRecording)stopRecording();}}
+            onPointerLeave={e=>{e.preventDefault();if(isRecording)stopRecording();}}
+            disabled={loading||isSpeaking}
+            style={{
+              width:72,height:72,borderRadius:"50%",border:"none",
+              cursor:loading||isSpeaking?"not-allowed":"pointer",
+              fontSize:28,
               background:isRecording?"linear-gradient(135deg,#c0392b,#e74c3c)":loading||isSpeaking?"#b0bec5":"linear-gradient(135deg,#2d5a8e,#1a3d6b)",
-              boxShadow:isRecording?"0 0 0 3px rgba(220,60,60,.25)":"0 4px 14px rgba(45,90,142,.35)"}}>
-            {isRecording?"⏹":isSpeaking?"🔊":"🎤"}
+              boxShadow:isRecording?"0 0 0 6px rgba(220,60,60,.3)":"0 4px 14px rgba(45,90,142,.4)",
+              transition:"all .15s",
+              transform:isRecording?"scale(1.1)":"scale(1)",
+              WebkitUserSelect:"none" as any,
+              userSelect:"none" as any,
+              touchAction:"none",
+            }}>
+            {isRecording?"🔴":isSpeaking?"🔊":"🎤"}
           </button>
         </div>
-        <div style={{fontSize:11,color:isRecording?"#e74c3c":"#aaa",textAlign:"center"}}>
-          {isRecording?"Kaydediliyor... durdurmak için bas":isSpeaking?"Konuşuyor...":"Konuşmak için bas"}
+        <div style={{fontSize:12,color:isRecording?"#e74c3c":isSpeaking?"#9ec97e":"#aaa",textAlign:"center",fontWeight:isRecording?600:400}}>
+          {isRecording?"🎙 Basılı tut, bırakınca gönderir":isSpeaking?"🔊 Konuşuyor...":"Bas ve konuş, bırak gönder"}
         </div>
-        {isSpeaking&&<button onClick={()=>{window.speechSynthesis.cancel();setIsSpeaking(false);}} style={{background:"rgba(220,60,60,.08)",border:"1px solid rgba(220,60,60,.25)",borderRadius:20,padding:"4px 12px",color:"#e07070",fontSize:12,cursor:"pointer"}}>⏹ Durdur</button>}
+        {isSpeaking&&(
+          <button onClick={()=>{window.speechSynthesis.cancel();setIsSpeaking(false);}}
+            style={{background:"rgba(220,60,60,.08)",border:"1px solid rgba(220,60,60,.25)",borderRadius:20,padding:"5px 14px",color:"#e07070",fontSize:12,cursor:"pointer"}}>
+            ⏹ Durdur
+          </button>
+        )}
       </div>
     </div></>
   );
