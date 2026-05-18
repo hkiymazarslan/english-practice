@@ -2,36 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { text } = await req.json();
+    const body = await req.json();
+    const { messages, system } = body;
     const groqKey = process.env.GROQ_KEY;
-    if (!groqKey) return NextResponse.json({ error: "No Groq key" }, { status: 401 });
+    if (!groqKey) return NextResponse.json({ error: "Groq key not configured" }, { status: 401 });
 
-    const res = await fetch("https://api.groq.com/openai/v1/audio/speech", {
+    const groqMessages = [];
+    if (system) groqMessages.push({ role: "system", content: system });
+    groqMessages.push(...messages);
+
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${groqKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "playai-tts",
-        input: text,
-        voice: "Aaliyah-PlayAI",
-        response_format: "mp3",
-      }),
+      headers: { "content-type": "application/json", "Authorization": `Bearer ${groqKey}` },
+      body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 800, messages: groqMessages }),
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return NextResponse.json({ error: err?.error?.message || "TTS error" }, { status: res.status });
-    }
+    const data = await res.json();
+    if (!res.ok) return NextResponse.json({ error: data?.error?.message || "Groq error" }, { status: res.status });
 
-    const audioBuffer = await res.arrayBuffer();
-    return new NextResponse(audioBuffer, {
-      headers: {
-        "Content-Type": "audio/mpeg",
-        "Content-Length": audioBuffer.byteLength.toString(),
-      },
-    });
+    const text = data?.choices?.[0]?.message?.content;
+    if (!text) return NextResponse.json({ error: "Empty response" }, { status: 500 });
+    return NextResponse.json({ content: [{ text }] });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
